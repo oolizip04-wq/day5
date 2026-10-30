@@ -3,61 +3,141 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>제주 역사문화 3D 지도</title>
+<title>제주 역사문화 스탬프 투어</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-  :root { --ink:#1f2d2b; --muted:#667a77; --line:#e3ddd0; --green:#2f7d5b; --orange:#e0791a; --gold:#d4a000; --red:#d6443a; }
+  :root { --ink:#1f2d2b; --muted:#667a77; --bg:#f6f3ec; --card:#fff; --line:#e3ddd0; --sea:#1d6fa5; --green:#2f7d5b; --orange:#e0791a; --gold:#d4a000; --red:#d6443a; }
   * { box-sizing: border-box; }
-  html, body { margin:0; height:100%; background:#d9eaf4; }
-  body { font:16px/1.6 system-ui,"Segoe UI","Malgun Gothic",sans-serif; color:var(--ink); overflow:hidden; }
-  .hero3d-wrap { position:relative; width:100%; height:100vh; height:100dvh; min-height:480px; overflow:hidden; background:#bfe4f5; }
-  .hero3d-wrap[hidden] { display:none; }
-  #hero3d { position:absolute; inset:0; cursor:grab; touch-action:none; }
-  #hero3d:active { cursor:grabbing; }
-  #hero3d canvas { display:block; width:100%; height:100%; }
-  .h3-title { position:absolute; top:18px; left:22px; right:200px; pointer-events:none; color:#fff; text-shadow:0 1px 8px rgba(5,30,55,.7); }
-  .h3-title b { display:block; font-size:1.5rem; }
-  .h3-title span { font-size:.88rem; opacity:.95; }
-  .h3-legend { position:absolute; right:18px; top:18px; display:flex; flex-direction:column; gap:3px; padding:9px 13px; font-size:.82rem; color:#0d3b57; background:rgba(255,255,255,.84); backdrop-filter:blur(4px); border-radius:12px; pointer-events:none; }
-  .h3-legend i { display:inline-block; width:10px; height:10px; margin-right:7px; border-radius:50%; }
-  .h3-hint { position:absolute; left:0; right:0; bottom:12px; text-align:center; font-size:.82rem; color:#fff; text-shadow:0 1px 5px rgba(5,30,55,.85); pointer-events:none; }
-  #tip3d { position:absolute; z-index:2; padding:3px 9px; font-size:.82rem; color:#fff; background:rgba(13,59,87,.9); border-radius:8px; pointer-events:none; transform:translate(-50%,-135%); white-space:nowrap; }
-  #tip3d[hidden] { display:none; }
-  .notice { position:absolute; z-index:3; top:78px; left:50%; transform:translateX(-50%); width:min(720px, calc(100% - 28px)); padding:9px 14px; font-size:.88rem; color:#7a2e00; background:#fff1d6; border:1px solid #f0c878; border-radius:10px; }
-  .notice[hidden] { display:none; }
-  .info3d { position:absolute; z-index:3; left:18px; bottom:42px; width:min(390px, calc(100% - 36px)); max-height:min(52vh, 460px); overflow:auto; padding:16px 18px; background:rgba(255,255,255,.95); backdrop-filter:blur(6px); border:1px solid var(--line); border-radius:16px; box-shadow:0 12px 36px rgba(5,30,55,.28); }
-  .info3d[hidden] { display:none; }
-  .info3d h2 { margin:6px 0 2px; font-size:1.2rem; }
-  .info3d .sub { color:var(--muted); font-size:.9rem; }
-  .info3d .meta { margin:10px 0 6px; padding:0; list-style:none; font-size:.88rem; }
-  .info3d .meta b { color:var(--muted); font-weight:600; margin-right:6px; }
-  .info3d .body { margin:8px 0; font-size:.92rem; white-space:pre-wrap; }
-  .info3d .link { display:inline-block; margin-top:2px; font-size:.9rem; color:#1d6fa5; }
-  .info3d .x { position:absolute; top:8px; right:10px; padding:2px 8px; font-size:1.2rem; line-height:1; cursor:pointer; color:var(--muted); background:none; border:0; }
+  body { margin:0; font:16px/1.6 system-ui,"Segoe UI","Malgun Gothic",sans-serif; color:var(--ink); background:var(--bg); }
+  header { padding:26px 20px 16px; text-align:center; color:#fff; background:linear-gradient(135deg,#1d6fa5,#2f7d5b); }
+  header h1 { margin:0 0 4px; font-size:1.8rem; }
+  header p { margin:0; opacity:.92; }
+  .wrap { max-width:1200px; margin:0 auto; padding:16px 16px 40px; }
+  .filters { display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; margin-bottom:10px; }
+  .filters input[type=search] { flex:1 1 240px; padding:10px 14px; font:inherit; border:1px solid var(--line); border-radius:10px; background:#fff; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { padding:5px 12px; font:inherit; font-size:.88rem; color:var(--ink); cursor:pointer; background:#fff; border:1px solid var(--line); border-radius:999px; }
+  .chip.on { color:#fff; background:var(--green); border-color:var(--green); }
+  .count { margin:8px 0 10px; color:var(--muted); font-size:.92rem; }
+  .main { display:grid; grid-template-columns:1.5fr 1fr; gap:16px; align-items:start; }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; }
+  #map { width:100%; height:560px; border-radius:10px; background:#cfe6f3; z-index:0; }
+  .nomap { display:flex; align-items:center; justify-content:center; height:100%; padding:20px; text-align:center; color:var(--muted); }
+  .legend { display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:8px; font-size:.85rem; color:var(--muted); }
+  .legend i { display:inline-block; width:10px; height:10px; margin-right:5px; border-radius:50%; }
+  .side { position:sticky; top:12px; max-height:calc(100vh - 24px); overflow:auto; }
+  .tabs { display:flex; gap:6px; margin-bottom:10px; }
+  .tab { flex:1; padding:8px 4px; font:inherit; font-size:.92rem; cursor:pointer; color:var(--ink); background:#f1ede2; border:0; border-radius:8px; }
+  .tab.on { color:#fff; background:var(--sea); }
+  .side h2 { margin:6px 0 2px; font-size:1.2rem; }
+  .side h3 { margin:2px 0 8px; font-size:1.05rem; }
+  .sub { color:var(--muted); font-size:.9rem; }
   .tag { display:inline-block; margin:2px 4px 2px 0; padding:1px 9px; font-size:.78rem; color:#fff; border-radius:999px; background:var(--green); }
   .tag.alt { background:var(--orange); }
-  .btns { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 4px; }
+  .meta { margin:10px 0; padding:0; list-style:none; font-size:.9rem; }
+  .meta b { color:var(--muted); font-weight:600; margin-right:6px; }
+  .body { margin:10px 0; white-space:pre-wrap; }
+  .link { display:inline-block; margin-top:6px; color:var(--sea); }
+  .empty { color:var(--muted); text-align:center; padding:26px 0; }
+  .btns { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
   .btn { padding:7px 14px; font:inherit; font-size:.9rem; cursor:pointer; color:var(--ink); background:#fff; border:1px solid var(--line); border-radius:8px; }
   .btn.on { color:#fff; background:var(--red); border-color:var(--red); }
   .btn.stamp.on { background:var(--gold); border-color:var(--gold); }
-  @media (max-width:860px) { .h3-legend { display:none; } .h3-title { right:14px; } .h3-title b { font-size:1.2rem; } .info3d { left:10px; right:10px; width:auto; bottom:36px; max-height:46vh; } .notice { top:76px; } }
+  .btn.primary { color:#fff; background:var(--sea); border-color:var(--sea); }
+  .course { margin:8px 0; padding:0; list-style:none; }
+  .course li { display:flex; align-items:center; gap:6px; padding:6px 0; border-bottom:1px solid var(--line); }
+  .course .no { flex:none; width:24px; height:24px; line-height:24px; text-align:center; color:#fff; font-size:.8rem; border-radius:50%; background:var(--red); }
+  .course .nm { flex:1; cursor:pointer; }
+  .course button { padding:2px 7px; font:inherit; cursor:pointer; background:#fff; border:1px solid var(--line); border-radius:6px; }
+  .bar { height:14px; margin:8px 0; overflow:hidden; background:#ece7da; border-radius:999px; }
+  .bar > div { height:100%; background:linear-gradient(90deg,var(--gold),#f0c53a); transition:width .3s; }
+  .badges { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
+  .badge { padding:4px 10px; font-size:.82rem; color:var(--muted); background:#f1ede2; border-radius:999px; }
+  .badge.got { color:#fff; background:var(--gold); }
+  .stamps { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .stamps span { padding:3px 10px; font-size:.82rem; cursor:pointer; color:#7a5a00; background:#fff6d6; border:1px solid #ecd27a; border-radius:999px; }
+  .list { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:12px; margin-top:16px; }
+  .card { padding:14px; cursor:pointer; background:var(--card); border:1px solid var(--line); border-radius:12px; }
+  .card:hover { border-color:var(--green); }
+  .card.sel { border-color:#111; }
+  .card h3 { margin:0 0 2px; font-size:1rem; }
+  .card .t { margin:0 0 4px; color:var(--green); font-size:.88rem; }
+  .card .x { margin:0 0 8px; color:var(--muted); font-size:.85rem; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  .card .btn { padding:3px 10px; font-size:.82rem; }
+  .notice { margin:0 0 12px; padding:10px 14px; font-size:.92rem; color:#7a2e00; background:#fff1d6; border:1px solid #f0c878; border-radius:10px; }
+  .notice[hidden] { display:none; }
+  .hero3d-wrap { position:relative; margin-bottom:14px; padding:0; overflow:hidden; border-radius:16px; background:#bfe4f5; box-shadow:0 8px 28px rgba(29,111,165,.25); }
+  .hero3d-wrap[hidden] { display:none; }
+  #hero3d { width:100%; height:470px; cursor:grab; touch-action:none; }
+  #hero3d:active { cursor:grabbing; }
+  #hero3d canvas { display:block; width:100%; height:100%; }
+  .h3-title { position:absolute; top:14px; left:18px; pointer-events:none; color:#fff; text-shadow:0 1px 6px rgba(5,30,55,.65); }
+  .h3-title b { display:block; font-size:1.25rem; }
+  .h3-title span { font-size:.85rem; opacity:.85; }
+  .h3-legend { position:absolute; right:14px; top:14px; display:flex; flex-direction:column; gap:3px; padding:8px 12px; font-size:.8rem; color:#0d3b57; background:rgba(255,255,255,.82); backdrop-filter:blur(4px); border-radius:10px; pointer-events:none; }
+  .h3-legend i { display:inline-block; width:9px; height:9px; margin-right:6px; border-radius:50%; }
+  .h3-hint { position:absolute; left:0; right:0; bottom:8px; text-align:center; font-size:.8rem; color:#fff; text-shadow:0 1px 5px rgba(5,30,55,.8); pointer-events:none; }
+  #tip3d { position:absolute; z-index:2; padding:3px 9px; font-size:.82rem; color:#fff; background:rgba(13,59,87,.88); border-radius:8px; pointer-events:none; transform:translate(-50%,-135%); white-space:nowrap; }
+  #tip3d[hidden] { display:none; }
+  @media (max-width:860px) { #hero3d { height:320px; } .h3-legend { display:none; } }
+  footer { padding:18px; text-align:center; color:var(--muted); font-size:.85rem; }
+  .num span { display:block; width:24px; height:24px; line-height:24px; text-align:center; color:#fff; font:700 12px/24px system-ui; background:var(--red); border:2px solid #fff; border-radius:50%; box-shadow:0 1px 4px rgba(0,0,0,.4); }
+  @media (max-width:860px) { .main { grid-template-columns:1fr; } .side { position:static; max-height:none; } #map { height:420px; } }
 </style>
 </head>
 <body>
-<section id="hero3dWrap" class="hero3d-wrap" aria-label="제주 3D 지도">
-  <div id="hero3d"></div>
-  <div class="h3-title"><b>제주 역사문화 3D 지도</b><span id="srcLine">실제 고도 데이터로 만든 지형 · 핀은 실제 위도·경도</span></div>
-  <div class="h3-legend">
-    <span><i style="background:#ff8a2a"></i>민속</span>
-    <span><i style="background:#2f9bff"></i>확장분야</span>
-    <span><i style="background:#ffcf2a"></i>스탬프 찍은 곳</span>
-    <span><i style="background:#d6443a"></i>내 답사 코스</span>
-  </div>
-  <div id="notice" class="notice" role="alert" hidden></div>
-  <aside id="info3d" class="info3d" hidden></aside>
-  <div class="h3-hint">드래그: 회전 · 휠/두 손가락: 확대 · 핀을 누르면 상세 정보</div>
-  <div id="tip3d" hidden></div>
-</section>
+<header>
+  <h1>제주 역사문화 스탬프 투어</h1>
+  <p>제주 역사·문화 장소 120곳을 지도에서 찾고, 찜해서 나만의 답사 코스를 만들고, 방문 도장을 모아보세요</p>
+</header>
 
+<div class="wrap">
+  <div id="notice" class="notice" role="alert" hidden></div>
+
+  <section id="hero3dWrap" class="panel hero3d-wrap" aria-label="제주 3D 지도">
+    <div id="hero3d"></div>
+    <div class="h3-title"><b>제주 역사문화 3D 지도</b><span>실제 고도 데이터로 만든 지형 위, 핀은 실제 위도·경도</span></div>
+    <div class="h3-legend">
+      <span><i style="background:#ff8a2a"></i>민속</span>
+      <span><i style="background:#2f9bff"></i>확장분야</span>
+      <span><i style="background:#ffcf2a"></i>스탬프 찍은 곳</span>
+      <span><i style="background:#d6443a"></i>내 답사 코스</span>
+    </div>
+    <div class="h3-hint">드래그: 회전 · 휠/두 손가락: 확대 · 핀을 누르면 상세 정보</div>
+    <div id="tip3d" hidden></div>
+  </section>
+  <div class="filters">
+    <input id="q" type="search" placeholder="장소명·제목·주제·주소로 검색 (지도 핀도 함께 걸러집니다)" aria-label="검색">
+    <div class="chips" id="catChips"></div>
+  </div>
+  <div class="chips" id="dirChips"></div>
+  <p class="count" id="count"></p>
+
+  <div class="main">
+    <div class="panel">
+      <div id="map"></div>
+      <div class="legend">
+        <span><i style="background:#e0791a"></i>민속</span>
+        <span><i style="background:#1d6fa5"></i>확장분야</span>
+        <span><i style="background:#fff;border:3px solid #d4a000"></i>스탬프 찍은 곳</span>
+        <span><i style="background:#d6443a"></i>내 코스(번호·선)</span>
+      </div>
+    </div>
+    <aside class="panel side">
+      <div class="tabs">
+        <button type="button" class="tab" data-tab="detail">상세 정보</button>
+        <button type="button" class="tab" data-tab="course">내 답사 코스</button>
+        <button type="button" class="tab" data-tab="stamp">스탬프 투어</button>
+      </div>
+      <div id="side"></div>
+    </aside>
+  </div>
+
+  <div class="list" id="list"></div>
+</div>
+<footer>데이터 출처: 제주특별자치도 제주역사문화 일반정보·위치정보 (기준일 2022-12-09) · 지도 Tiles © Esri · 지도 화면만 인터넷 연결이 필요합니다</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script>
@@ -74,6 +154,7 @@ window.JEJU_DEM={"w": 428, "h": 291, "kmW": 81.8, "kmH": 55.3, "data": "2P/Y/9j/
     fetch('/api/spots')
       .then(function (r) {
         if (r.ok) return r.json();
+        // 서버가 보낸 실패 이유(키 미설정, 호출 실패 등)를 그대로 보여주기 위해 꺼냄
         return r.json().catch(function () { return {}; }).then(function (j) { throw new Error(j.error || ('서버 응답 오류 HTTP ' + r.status)); });
       })
       .then(function (j) { if (j && j.items && j.items.length) start(j.items, '공공데이터포털 API'); else throw new Error('받은 데이터가 비어 있습니다'); })
@@ -85,49 +166,193 @@ window.JEJU_DEM={"w": 428, "h": 291, "kmW": 81.8, "kmH": 55.3, "data": "2P/Y/9j/
   }
 
   function start(ITEMS, source, notice) {
+  if (notice) { var nb = document.getElementById('notice'); nb.textContent = '⚠ ' + notice; nb.hidden = false; }
   var BY_ID = {}; ITEMS.forEach(function (d) { BY_ID[d.id] = d; });
-  var state = { sel: null };
+  var state = { q: '', cat: '전체', dir: '전체', sel: null, tab: 'detail' };
   var scene3d = null;
-  function $(id) { return document.getElementById(id); }
-  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  if (notice) { var nb = $('notice'); nb.textContent = '⚠ ' + notice; nb.hidden = false; }
-  $('srcLine').textContent = '실제 고도 데이터로 만든 지형 · 핀 ' + ITEMS.length + '곳은 실제 위도·경도 · 데이터: ' + source;
 
-  // ---- 찜 순서·스탬프 저장 (file:// 등에서 저장이 막혀 있어도 동작하도록 try/catch)
+  // ---- 저장(찜 순서·스탬프). file:// 에서 막혀 있어도 동작하도록 try/catch
   function load(key, fallback) { try { var v = JSON.parse(localStorage.getItem(key)); return Array.isArray(v) ? v : fallback; } catch (e) { return fallback; } }
   function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* 저장 불가여도 화면은 계속 동작 */ } }
   var fav = load('jeju_fav', []).filter(function (id) { return BY_ID[id]; });
   var stamps = load('jeju_stamps', []).filter(function (id) { return BY_ID[id]; });
+
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function $(id) { return document.getElementById(id); }
+  function color(d) { return d.cat === '민속' ? '#e0791a' : '#1d6fa5'; }
   function isFav(id) { return fav.indexOf(id) >= 0; }
   function isStamp(id) { return stamps.indexOf(id) >= 0; }
 
-  // ---- 핀을 눌렀을 때 뜨는 정보 카드
-  function drawInfo() {
-    var box = $('info3d'), d = BY_ID[state.sel];
-    if (!d) { box.hidden = true; box.innerHTML = ''; return; }
-    var text = d.content.length > 420 ? d.content.slice(0, 420) + '…' : d.content;
-    box.innerHTML = '<button type="button" class="x" data-act="close" aria-label="닫기">×</button>' +
-      '<span class="tag' + (d.cat === '민속' ? ' alt' : '') + '">' + esc(d.cat) + '</span><span class="tag" style="background:#6b7f86">' + esc(d.dir1) + (d.dir2 && d.dir2 !== '해당없음' ? ' › ' + esc(d.dir2) : '') + '</span>' +
-      '<h2>' + esc(d.name) + '</h2><div class="sub">' + esc(d.title) + '</div>' +
-      '<div class="btns"><button type="button" class="btn' + (isFav(d.id) ? ' on' : '') + '" data-act="fav">' + (isFav(d.id) ? '♥ 코스에서 빼기' : '♡ 코스에 찜하기') + '</button>' +
-      '<button type="button" class="btn stamp' + (isStamp(d.id) ? ' on' : '') + '" data-act="stamp">' + (isStamp(d.id) ? '✔ 도장 취소' : '방문 도장 찍기') + '</button></div>' +
-      '<ul class="meta"><li><b>주소</b>' + esc(d.address) + '</li><li><b>저작자</b>' + esc(d.author) + ' · ' + esc(d.date) + '</li></ul>' +
-      '<div class="body">' + esc(text) + '</div>' +
-      '<a class="link" href="' + esc(d.url) + '" target="_blank" rel="noopener">제주도 문화 디렉토리 원문 보기 ↗</a>';
-    box.hidden = false; box.scrollTop = 0;
+  // ---- 지도 (Leaflet + 인터넷 타일)
+  var map = null, pins = null, route = null, fitNext = false;
+  if (window.L) {
+    map = L.map('map').setView([33.38, 126.55], 10);
+    // 키가 필요 없는 Esri 지도를 기본으로, 타일을 못 불러오면 OpenStreetMap으로 교체
+    var base = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, attribution: 'Tiles © Esri' });
+    var swapped = false;
+    base.on('tileerror', function () {
+      if (swapped) return; swapped = true; map.removeLayer(base);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap contributors' }).addTo(map);
+    });
+    base.addTo(map);
+    route = L.layerGroup().addTo(map);
+    pins = L.layerGroup().addTo(map);
+  } else {
+    $('map').innerHTML = '<div class="nomap">지도를 불러오지 못했습니다.<br>인터넷에 연결된 상태에서 다시 열어주세요. (목록·검색·코스·스탬프는 그대로 쓸 수 있습니다)</div>';
   }
-  function render() { if (scene3d) scene3d.update(ITEMS); drawInfo(); }
-  function select(id) { state.sel = id; render(); }
 
-  $('info3d').addEventListener('click', function (e) {
-    var el = e.target.closest('[data-act]'); if (!el || !state.sel) return;
-    var act = el.getAttribute('data-act'), id = state.sel;
-    if (act === 'close') state.sel = null;
-    else if (act === 'fav') { var p = fav.indexOf(id); if (p >= 0) fav.splice(p, 1); else fav.push(id); save('jeju_fav', fav); }
-    else if (act === 'stamp') { var s = stamps.indexOf(id); if (s >= 0) stamps.splice(s, 1); else stamps.push(id); save('jeju_stamps', stamps); }
+  function uniq(key) { var m = {}; ITEMS.forEach(function (d) { m[d[key]] = (m[d[key]] || 0) + 1; }); return m; }
+  var cats = uniq('cat'), dirs = uniq('dir1');
+
+  function chips(el, map_, key) {
+    var names = ['전체'].concat(Object.keys(map_).sort(function (a, b) { return map_[b] - map_[a]; }));
+    el.innerHTML = names.map(function (n) {
+      var c = n === '전체' ? ITEMS.length : map_[n];
+      return '<button type="button" class="chip' + (state[key] === n ? ' on' : '') + '" data-v="' + esc(n) + '">' + esc(n) + ' ' + c + '</button>';
+    }).join('');
+    el.onclick = function (e) {
+      var b = e.target.closest('.chip'); if (!b) return;
+      state[key] = b.getAttribute('data-v'); fitNext = true; render();
+    };
+  }
+
+  function filtered() {
+    var q = state.q.trim().toLowerCase();
+    return ITEMS.filter(function (d) {
+      if (state.cat !== '전체' && d.cat !== state.cat) return false;
+      if (state.dir !== '전체' && d.dir1 !== state.dir) return false;
+      if (!q) return true;
+      return (d.name + ' ' + d.title + ' ' + d.topic + ' ' + d.address + ' ' + d.dir2).toLowerCase().indexOf(q) >= 0;
+    });
+  }
+
+  function drawMap(list) {
+    if (!map) return;
+    pins.clearLayers(); route.clearLayers();
+    list.forEach(function (d) {
+      var st = isStamp(d.id), sel = state.sel === d.id;
+      L.circleMarker([d.lat, d.lng], {
+        radius: sel ? 11 : 7, color: st ? '#d4a000' : '#fff', weight: st ? 4 : 1.5,
+        fillColor: color(d), fillOpacity: .95
+      }).on('click', function () { select(d.id, true); }).bindTooltip(d.name).addTo(pins);
+    });
+    // 내 코스: 찜한 순서대로 선 + 번호 (필터와 상관없이 항상 표시)
+    var pts = fav.map(function (id) { return [BY_ID[id].lat, BY_ID[id].lng]; });
+    if (pts.length > 1) L.polyline(pts, { color: '#d6443a', weight: 4, opacity: .85 }).addTo(route);
+    fav.forEach(function (id, i) {
+      var d = BY_ID[id];
+      L.marker([d.lat, d.lng], { icon: L.divIcon({ className: 'num', html: '<span>' + (i + 1) + '</span>', iconSize: [24, 24] }), zIndexOffset: 1000 })
+        .on('click', function () { select(id, true); }).bindTooltip(d.name).addTo(route);
+    });
+    if (fitNext) {
+      fitNext = false;
+      if (list.length) map.fitBounds(L.latLngBounds(list.map(function (d) { return [d.lat, d.lng]; })), { padding: [30, 30], maxZoom: 13 });
+    }
+  }
+
+  function drawList(list) {
+    $('list').innerHTML = list.length ? list.map(function (d) {
+      return '<div class="card' + (state.sel === d.id ? ' sel' : '') + '" data-id="' + d.id + '">' +
+        '<h3>' + esc(d.name) + '</h3><p class="t">' + esc(d.cat) + ' · ' + esc(d.dir1) + '</p>' +
+        '<p class="x">' + esc(d.title) + ' — ' + esc(d.content.slice(0, 90)) + '</p>' +
+        '<button type="button" class="btn' + (isFav(d.id) ? ' on' : '') + '" data-act="fav" data-id="' + d.id + '">' + (isFav(d.id) ? '♥ 찜함' : '♡ 찜') + '</button> ' +
+        '<button type="button" class="btn stamp' + (isStamp(d.id) ? ' on' : '') + '" data-act="stamp" data-id="' + d.id + '">' + (isStamp(d.id) ? '✔ 도장' : '도장 찍기') + '</button>' +
+        '</div>';
+    }).join('') : '<p class="empty" style="grid-column:1/-1">조건에 맞는 장소가 없습니다.</p>';
+  }
+
+  function actionButtons(d) {
+    return '<div class="btns">' +
+      '<button type="button" class="btn' + (isFav(d.id) ? ' on' : '') + '" data-act="fav" data-id="' + d.id + '">' + (isFav(d.id) ? '♥ 코스에서 빼기' : '♡ 코스에 찜하기') + '</button>' +
+      '<button type="button" class="btn stamp' + (isStamp(d.id) ? ' on' : '') + '" data-act="stamp" data-id="' + d.id + '">' + (isStamp(d.id) ? '✔ 도장 취소' : '방문 도장 찍기') + '</button></div>';
+  }
+
+  function sideDetail() {
+    var d = BY_ID[state.sel];
+    if (!d) return '<p class="empty">지도의 핀이나 아래 카드를 누르면<br>일반정보의 설명이 여기에 나옵니다.</p>';
+    var topics = d.topic.split('.').map(function (t) { return t.trim(); }).filter(Boolean);
+    return '<span class="tag' + (d.cat === '민속' ? ' alt' : '') + '">' + esc(d.cat) + '</span><span class="tag" style="background:#6b7f86">' + esc(d.dir1) + (d.dir2 && d.dir2 !== '해당없음' ? ' › ' + esc(d.dir2) : '') + '</span>' +
+      '<h2>' + esc(d.name) + '</h2>' +
+      '<div class="sub">' + esc(d.title) + (d.subtitle && d.subtitle !== '해당없음' ? ' — ' + esc(d.subtitle) : '') + '</div>' +
+      actionButtons(d) +
+      '<ul class="meta"><li><b>주소</b>' + esc(d.address) + ' (' + esc(d.zip) + ')</li>' +
+      '<li><b>좌표</b>' + d.lat + ', ' + d.lng + '</li>' +
+      '<li><b>저작자</b>' + esc(d.author) + '</li>' +
+      '<li><b>발행일</b>' + esc(d.date) + ' · ' + esc(d.type) + '</li></ul>' +
+      '<div class="body">' + esc(d.content) + '</div>' +
+      (topics.length ? '<div>' + topics.map(function (t) { return '<span class="tag" style="background:#8a9a8f">#' + esc(t) + '</span>'; }).join('') + '</div>' : '') +
+      '<a class="link" href="' + esc(d.url) + '" target="_blank" rel="noopener">제주도 문화 디렉토리 원문 보기 ↗</a>';
+  }
+
+  function km(a, b) {
+    var R = 6371, r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
+    var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  function sideCourse() {
+    if (!fav.length) return '<h3>나만의 답사 코스</h3><p class="empty">카드나 상세 정보의 <b>♡ 찜</b>을 누르면<br>찜한 순서대로 지도에 선으로 이어집니다.</p>';
+    var total = 0; for (var i = 1; i < fav.length; i++) total += km(BY_ID[fav[i - 1]], BY_ID[fav[i]]);
+    return '<h3>나만의 답사 코스 (' + fav.length + '곳)</h3>' +
+      '<div class="sub">직선거리 합계 약 ' + total.toFixed(1) + 'km · 순서는 찜한 순서입니다</div>' +
+      '<ol class="course" style="list-style:none">' + fav.map(function (id, i) {
+        return '<li><span class="no">' + (i + 1) + '</span><span class="nm" data-act="goto" data-id="' + id + '">' + esc(BY_ID[id].name) + '</span>' +
+          '<button type="button" data-act="up" data-i="' + i + '" ' + (i === 0 ? 'disabled' : '') + ' aria-label="위로">↑</button>' +
+          '<button type="button" data-act="down" data-i="' + i + '" ' + (i === fav.length - 1 ? 'disabled' : '') + ' aria-label="아래로">↓</button>' +
+          '<button type="button" data-act="fav" data-id="' + id + '" aria-label="빼기">✕</button></li>';
+      }).join('') + '</ol>' +
+      '<div class="btns"><button type="button" class="btn primary" data-act="fitroute">코스 전체 보기</button>' +
+      '<button type="button" class="btn" data-act="clearroute">코스 비우기</button></div>';
+  }
+
+  var BADGES = [[1, '첫 도장'], [10, '탐방 입문'], [30, '역사 산책자'], [60, '문화 탐험가'], [120, '제주 완주']];
+  function sideStamp() {
+    var n = stamps.length, pct = Math.round(n / ITEMS.length * 100);
+    var byCat = {}; stamps.forEach(function (id) { var c = BY_ID[id].dir1; byCat[c] = (byCat[c] || 0) + 1; });
+    return '<h3>스탬프 투어 ' + n + ' / ' + ITEMS.length + '</h3>' +
+      '<div class="bar"><div style="width:' + pct + '%"></div></div>' +
+      '<div class="sub">' + pct + '% 달성 · 장소를 선택해 <b>방문 도장 찍기</b>를 눌러보세요</div>' +
+      '<div class="badges">' + BADGES.map(function (b) { return '<span class="badge' + (n >= b[0] ? ' got' : '') + '">' + (n >= b[0] ? '🏅 ' : '') + b[1] + ' (' + b[0] + ')</span>'; }).join('') + '</div>' +
+      (n ? '<div class="sub">분야별: ' + Object.keys(byCat).map(function (k) { return esc(k) + ' ' + byCat[k]; }).join(' · ') + '</div>' +
+        '<div class="stamps">' + stamps.map(function (id) { return '<span data-act="goto" data-id="' + id + '">✔ ' + esc(BY_ID[id].name) + '</span>'; }).join('') + '</div>' +
+        '<div class="btns"><button type="button" class="btn" data-act="clearstamp">도장 모두 지우기</button></div>'
+        : '<p class="empty">아직 찍은 도장이 없습니다.</p>');
+  }
+
+  function drawSide() {
+    Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) { t.classList.toggle('on', t.getAttribute('data-tab') === state.tab); });
+    $('side').innerHTML = state.tab === 'course' ? sideCourse() : state.tab === 'stamp' ? sideStamp() : sideDetail();
+  }
+
+  function render() {
+    chips($('catChips'), cats, 'cat');
+    chips($('dirChips'), dirs, 'dir');
+    var list = filtered();
+    $('count').textContent = '총 ' + ITEMS.length + '곳 중 ' + list.length + '곳 표시 · 찜 ' + fav.length + ' · 도장 ' + stamps.length + ' · 데이터: ' + source;
+    drawMap(list); drawList(list); drawSide();
+    if (scene3d) scene3d.update(list);
+  }
+
+  function select(id, fromMap) {
+    state.sel = id; state.tab = 'detail';
+    if (map && !fromMap) map.setView([BY_ID[id].lat, BY_ID[id].lng], Math.max(map.getZoom(), 12));
     render();
-  });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && state.sel) { state.sel = null; render(); } });
+    if (window.innerWidth <= 860) $('side').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function onAction(e) {
+    var el = e.target.closest('[data-act]'); if (!el) return false;
+    var act = el.getAttribute('data-act'), id = Number(el.getAttribute('data-id')), i = Number(el.getAttribute('data-i'));
+    if (act === 'fav') { var p = fav.indexOf(id); if (p >= 0) fav.splice(p, 1); else fav.push(id); save('jeju_fav', fav); }
+    else if (act === 'stamp') { var s = stamps.indexOf(id); if (s >= 0) stamps.splice(s, 1); else stamps.push(id); save('jeju_stamps', stamps); }
+    else if (act === 'up' && i > 0) { var t = fav[i]; fav[i] = fav[i - 1]; fav[i - 1] = t; save('jeju_fav', fav); }
+    else if (act === 'down' && i < fav.length - 1) { var u = fav[i]; fav[i] = fav[i + 1]; fav[i + 1] = u; save('jeju_fav', fav); }
+    else if (act === 'clearroute') { fav = []; save('jeju_fav', fav); }
+    else if (act === 'clearstamp') { stamps = []; save('jeju_stamps', stamps); }
+    else if (act === 'goto') { select(id); return true; }
+    else if (act === 'fitroute') { if (map && fav.length) map.fitBounds(L.latLngBounds(fav.map(function (x) { return [BY_ID[x].lat, BY_ID[x].lng]; })), { padding: [40, 40], maxZoom: 13 }); return true; }
+    render(); return true;
+  }
 
   // ---- three.js 3D 제주 지도: 실제 고도 데이터(DEM)로 만든 지형 위에 위도·경도 그대로 핀을 세움.
   // three.js 또는 데이터를 못 불러오면 이 구역만 숨김
@@ -388,7 +613,13 @@ window.JEJU_DEM={"w": 428, "h": 291, "kmW": 81.8, "kmH": 55.3, "data": "2P/Y/9j/
     return { update: update };
   }
 
-
+  $('list').addEventListener('click', function (e) {
+    if (onAction(e)) return;
+    var c = e.target.closest('.card'); if (c) select(Number(c.getAttribute('data-id')));
+  });
+  $('side').addEventListener('click', onAction);
+  document.querySelector('.tabs').addEventListener('click', function (e) { var t = e.target.closest('.tab'); if (t) { state.tab = t.getAttribute('data-tab'); drawSide(); } });
+  $('q').addEventListener('input', function (e) { state.q = e.target.value; fitNext = true; render(); });
   scene3d = make3d();
   render();
   }
