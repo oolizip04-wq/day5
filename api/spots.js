@@ -39,7 +39,18 @@ function extractMessage(j) {
   return m ? redact(typeof m === 'string' ? m : JSON.stringify(m)).slice(0, 120) : ''
 }
 
-async function fetchAll(base, key) {
+// 요청 주소로 API 설명서(Swagger/OpenAPI)를 넣은 경우, 설명서 안의 host·basePath·paths로 실제 데이터 주소를 만듦
+function endpointFromSpec(j) {
+  const paths = j && typeof j.paths === 'object' && j.paths ? j.paths : null
+  if (!paths) return ''
+  const p = Object.keys(paths).find((k) => paths[k] && paths[k].get)
+  if (!p) return ''
+  if (j.swagger && j.host) return (j.schemes && j.schemes.includes('https') ? 'https' : (j.schemes && j.schemes[0]) || 'https') + '://' + j.host + (j.basePath || '') + p
+  if (j.openapi && Array.isArray(j.servers) && j.servers[0] && j.servers[0].url) return j.servers[0].url.replace(/\/$/, '') + p
+  return ''
+}
+
+async function fetchAll(base, key, hop = 0) {
   const rows = []
   const diag = { rows: 0, columns: [], message: '', topKeys: [] }
   for (let page = 1; page <= MAX_PAGES; page++) {
@@ -63,6 +74,9 @@ async function fetchAll(base, key) {
       throw new Error('포털 응답이 JSON이 아닙니다: ' + redact(text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()).slice(0, 120))
     }
     if (page === 1) {
+      // 설명서가 돌아왔으면 그 안의 실제 데이터 주소로 한 번만 다시 호출 (무한 반복 방지)
+      const real = hop === 0 ? endpointFromSpec(j) : ''
+      if (real && real !== base) return fetchAll(real, key, 1)
       diag.topKeys = Object.keys(j).slice(0, 8)
       diag.message = extractMessage(j)
     }
