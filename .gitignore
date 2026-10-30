@@ -1,7 +1,11 @@
-# 과제 폴더만 올립니다 (나머지 프로젝트는 제외)
-/*
-!/.gitignore
-!/과제/
-# 압축을 풀다가 생긴 중복 하위 폴더 제외
-/과제/성연호_1단계/성연호_1단계/
-!/jeju-vercel/
+# 비밀값·배포 도구 파일
+.env
+.env.local
+.env.*
+!.env.example
+.vercel
+node_modules
+
+# 내 컴퓨터에만 둘 것 (GitHub에는 올리지 않음)
+/과제/
+/mission1/
